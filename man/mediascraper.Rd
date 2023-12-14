@@ -7,7 +7,7 @@
 mediascraper(
   outlets,
   browser = "firefox",
-  port = 4490L,
+  port = 4491L,
   sqldb = FALSE,
   dbname,
   plots = FALSE,
@@ -15,11 +15,11 @@ mediascraper(
 )
 }
 \arguments{
-\item{outlets}{Vector of media-outlets that should be scraped. Currently supported: Watson.ch, 20Minuten.ch}
+\item{outlets}{Vector of media-outlets that should be scraped. Currently supported: Watson.ch, 20 Minuten.ch}
 
 \item{browser}{Browser that should be used for scraping. Default: Firefox}
 
-\item{port}{Port that should be used for scraping. Default: 4490L}
+\item{port}{Port that should be used for scraping. Default: 4491L}
 
 \item{sqldb}{Whether scraping-results should to be stored in an sql-database or not. Default: FALSE}
 
@@ -36,5 +36,5 @@ R-dataframe or sql-database
 Title
 }
 \examples{
-mediascraper(outlets = c("Watson", "20Minuten"), plots = TRUE)
+mediascraper(outlets = c("Watson", "20 Minuten"), plots = TRUE)
 }

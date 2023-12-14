@@ -1,8 +1,8 @@
 #' Title
 #'
-#' @param outlets Vector of media-outlets that should be scraped. Currently supported: Watson.ch, 20Minuten.ch
+#' @param outlets Vector of media-outlets that should be scraped. Currently supported: Watson.ch, 20 Minuten.ch
 #' @param browser Browser that should be used for scraping. Default: Firefox
-#' @param port Port that should be used for scraping. Default: 4490L
+#' @param port Port that should be used for scraping. Default: 4491L
 #' @param sqldb Whether scraping-results should to be stored in an sql-database or not. Default: FALSE
 #' @param dbname Name for the sql-database if sqldb = TRUE
 #' @param plots Provides a summary of the scraped data in the form of basic plots if TRUE. Plots show: Number of articles per outlet scraped and mean-length of title/lead/body of the articles that where scraped. Default: FALSE
@@ -12,8 +12,8 @@
 #' @export
 #'
 #' @examples
-#' mediascraper(outlets = c("Watson", "20Minuten"), plots = TRUE)
-mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALSE,
+#' mediascraper(outlets = c("Watson", "20 Minuten"), plots = TRUE)
+mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALSE,
                         dbname, plots = FALSE, searchterm = NULL){
 
   suppressMessages(require(RSelenium))
@@ -32,7 +32,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
 
   # Initiating sql-database (if requested by the user)
   if (sqldb == TRUE){require(DBI)
-    con = dbConnect(RSQLite::SQLite(), dbname)
+    con = DBI::dbConnect(RSQLite::SQLite(), dbname)
     dbSendQuery(con, "CREATE TABLE scrapingresults(
               title TEXT,
               lead TEXT,
@@ -41,7 +41,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
               outlet VARCHAR(32) NOT NULL,
               time DATETIME
             )")
-    dbListTables(con)
+    DBI::dbListTables(con)
   }
 
 
@@ -54,7 +54,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
 
   # Initiate scraper
   cat("Initiating Webscraper\n")
-  driver = suppressMessages(rsDriver(browser=browser, port = port, chromever = NULL))
+  driver = suppressMessages(RSelenium::rsDriver(browser=browser, port = port, chromever = NULL))
   rs = suppressMessages(driver$client)
 
 
@@ -70,7 +70,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
     Sys.sleep(10)
 
     html = rs$getPageSource() # get source of the page
-    links = str_match_all(html, '<a class="watson-teaser__link[^"]*" href=\"(.*?)\"')[[1]]
+    links = stringr::str_match_all(html, '<a class="watson-teaser__link[^"]*" href=\"(.*?)\"')[[1]]
     links = as.data.frame(links)[,2]
 
     # Delete links that do not begin with "https://www.watson.ch"
@@ -116,7 +116,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
 
 
       if (sqldb == TRUE){sql = paste0("INSERT INTO scrapingresults VALUES ('",title,"','",lead,"','",body,"','",link,"','Watson','",time,"')")
-      suppressMessages(dbSendStatement(con, sql))}
+      suppressMessages(DBI::dbSendStatement(con, sql))}
 
 
     }
@@ -135,7 +135,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
     Sys.sleep(10)
 
     html = rs$getPageSource() # get source of the page
-    links = str_match_all(html, '<a class="sc-bb81291f-1[^"]*" href=\"(.*?)\"')[[1]]
+    links = stringr::str_match_all(html, '<a class="sc-bb81291f-1[^"]*" href=\"(.*?)\"')[[1]]
     links = as.data.frame(links)[,2]
 
 
@@ -185,7 +185,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
 
 
       if (sqldb == TRUE){sql = paste0("INSERT INTO scrapingresults VALUES ('",title,"','",lead,"','",body,"','",link,"','20 Minuten','",time,"')")
-      suppressMessages(dbSendStatement(con, sql))}
+      suppressMessages(DBI::dbSendStatement(con, sql))}
 
 
     }
@@ -213,46 +213,46 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
     # Setting colors for the different outlets
     colors <- c("Watson" = "#F40F96", "20 Minuten" = "#0D2880", "SRF" = "#AF001D")
 
-    nrart <- results_df |> group_by(outlet) |>
-      summarize(n = n()) |> ggplot(aes(x = outlet, y = n, color = outlet, fill =
+    nrart <- results_df |> dplyr::group_by(outlet) |>
+      dplyr::summarize(n = n()) |> ggplot2::ggplot(ggplot2::aes(x = outlet, y = n, color = outlet, fill =
                                          outlet)) +
-      geom_col(width = 0.5, show.legend = F) +
-      xlab("Outlet") + ylab("Number of Articles")  +
-      ggtitle("Number of Scrapped Articles per Outlet") + theme_bw() +
-      scale_fill_manual(values = colors) + scale_color_manual(values = colors)
+      ggplot2::geom_col(width = 0.5, show.legend = F) +
+      ggplot2::xlab("Outlet") + ylab("Number of Articles")  +
+      ggplot2::ggtitle("Number of Scrapped Articles per Outlet") + ggplot2::theme_bw() +
+      ggplot2::scale_fill_manual(values = colors) + ggplot2::scale_color_manual(values = colors)
     print(nrart)
 
     # Length of title
-    lete <- results_df |> group_by(outlet) |>
-      summarize(titlelength = mean(nchar(title), na.rm = T)) |> ggplot(aes(x = outlet,
+    lete <- results_df |> dplyr::group_by(outlet) |>
+      dplyr::summarize(titlelength = mean(nchar(title), na.rm = T)) |> ggplot2::ggplot(ggplot2::aes(x = outlet,
                                                                            y = titlelength,
                                                                            color = outlet,
                                                                            fill = outlet)) +
-      geom_col(width = 0.5, show.legend = F) + xlab("Outlet") +
-      ylab("Number of Characters")  + ggtitle("Mean Length of Article-Title") +
-      theme_bw() + scale_fill_manual(values = colors) + scale_color_manual(values = colors)
+      ggplot2::geom_col(width = 0.5, show.legend = F) + ggplot2::xlab("Outlet") +
+      ggplot2::ylab("Number of Characters")  + ggplot2::ggtitle("Mean Length of Article-Title") +
+      ggplot2::theme_bw() + ggplot2::scale_fill_manual(values = colors) + ggplot2::scale_color_manual(values = colors)
     print(lete)
 
     # Length of lead
-    lele <- results_df |> group_by(outlet) |>
-      summarize(leadlength = mean(nchar(lead), na.rm = T)) |> ggplot(aes(x = outlet,
+    lele <- results_df |> dplyr::group_by(outlet) |>
+      dplyr::summarize(leadlength = mean(nchar(lead), na.rm = T)) |> ggplot2::ggplot(ggplot2::aes(x = outlet,
                                                                          y = leadlength,
                                                                          color = outlet,
                                                                          fill = outlet)) +
-      geom_col(width = 0.5, show.legend = F) + xlab("Outlet") +
-      ylab("Number of Characters")  +
-      ggtitle("Mean Length of Article-Lead") + theme_bw() + scale_fill_manual(values = colors)  + scale_color_manual(values = colors)
+      ggplot2::geom_col(width = 0.5, show.legend = F) + ggplot2::xlab("Outlet") +
+      ggplot2::ylab("Number of Characters")  +
+      ggplot2::ggtitle("Mean Length of Article-Lead") + ggplot2::theme_bw() + ggplot2::scale_fill_manual(values = colors)  + ggplot2::scale_color_manual(values = colors)
     print(lele)
 
     # Length of body
-    lebo <- results_df |> group_by(outlet) |>
-      summarize(bodylength = mean(nchar(body), na.rm = T)) |> ggplot(aes(x = outlet,
+    lebo <- results_df |> dplyr::group_by(outlet) |>
+      dplyr::summarize(bodylength = mean(nchar(body), na.rm = T)) |> ggplot2::ggplot(ggplot2::aes(x = outlet,
                                                                          y = bodylength,
                                                                          color = outlet,
                                                                          fill = outlet)) +
-      geom_col(width = 0.5, show.legend = F) + xlab("Outlet") +
-      ylab("Number of Characters")  + ggtitle("Mean Length of Article-Body") +
-      theme_bw()+ scale_fill_manual(values = colors)  + scale_color_manual(values = colors)
+      ggplot2::geom_col(width = 0.5, show.legend = F) + ggplot2::xlab("Outlet") +
+      ylab("Number of Characters")  + ggplot2::ggtitle("Mean Length of Article-Body") +
+      theme_bw() + ggplot2::scale_fill_manual(values = colors)  + ggplot2::scale_color_manual(values = colors)
     print(lebo)
   }
 
@@ -260,19 +260,20 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
   # Search for appearances of a specific word in the title of the articles
   if (!is.null(searchterm)){
     wordo <- results_df  |>
-      mutate(word_count = str_count(title, searchterm)) |> group_by(outlet) |>
-      summarise(
+      dplyr::mutate(word_count = str_count(title, searchterm)) |> dplyr::group_by(outlet) |>
+      dplyr::summarise(
         word_count = sum(word_count)
-      ) |> ggplot(aes(x = outlet, y = word_count, color = outlet, fill = outlet)) +
-      geom_col(width = 0.5, show.legend = F) + xlab("Outlet") +
-      ylab("Number of Appearances")  +
-      ggtitle("Number of Appearances of Word Specified") + theme_bw()
+      ) |> ggplot2::ggplot(ggplot2::aes(x = outlet, y = word_count, color = outlet, fill = outlet)) +
+      ggplot2::geom_col(width = 0.5, show.legend = F) + ggplot2::xlab("Outlet") +
+      ggplot2::ylab("Number of Appearances")  +
+      ggplot2::ggtitle("Number of Appearances of Word Specified") + theme_bw()
     print(wordo)}
 
 
 
-  # Saving results into an sql-database
+  # Saving results into an sql-database or returning r-dataframe
   rs$close()
+  rs$server$stop()
   if (sqldb == TRUE){
     cat("Done. Saved results in sql-database 'scrapingresults'. Use object 'con' in environment to connect to database\n")
     assign("con", con, envir = .GlobalEnv)
