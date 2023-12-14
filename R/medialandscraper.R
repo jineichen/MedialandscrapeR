@@ -8,7 +8,7 @@
 #' @param plots Provides a summary of the scraped data in the form of basic plots if TRUE. Plots show: Number of articles per outlet scraped and mean-length of title/lead/body of the articles that where scraped. Default: FALSE
 #' @param searchterm Regular expression for which you want to search in the titles of the scraped articles. Result is a plot
 #'
-#' @return R-dataframe or sql-database. Yes
+#' @return R-dataframe or sql-database
 #' @export
 #'
 #' @examples
