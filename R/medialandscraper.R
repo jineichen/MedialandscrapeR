@@ -214,45 +214,45 @@ mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALS
     colors <- c("Watson" = "#F40F96", "20 Minuten" = "#0D2880", "SRF" = "#AF001D")
 
     nrart <- results_df |> dplyr::group_by(outlet) |>
-      dplyr::summarize(n = n()) |> ggplot2::ggplot(ggplot2::aes(x = outlet, y = n, color = outlet, fill =
-                                         outlet)) +
-      ggplot2::geom_col(width = 0.5, show.legend = F) +
-      ggplot2::xlab("Outlet") + ylab("Number of Articles")  +
-      ggplot2::ggtitle("Number of Scrapped Articles per Outlet") + ggplot2::theme_bw() +
-      ggplot2::scale_fill_manual(values = colors) + ggplot2::scale_color_manual(values = colors)
+      dplyr::summarize(n = n()) |> ggplot(aes(x = outlet, y = n, color = outlet, fill =
+                                                outlet)) +
+      geom_col(width = 0.5, show.legend = F) +
+      xlab("Outlet") + ylab("Number of Articles")  +
+      ggtitle("Number of Scrapped Articles per Outlet") + theme_bw() +
+      scale_fill_manual(values = colors) + scale_color_manual(values = colors)
     print(nrart)
 
     # Length of title
     lete <- results_df |> dplyr::group_by(outlet) |>
-      dplyr::summarize(titlelength = mean(nchar(title), na.rm = T)) |> ggplot2::ggplot(ggplot2::aes(x = outlet,
-                                                                           y = titlelength,
-                                                                           color = outlet,
-                                                                           fill = outlet)) +
-      ggplot2::geom_col(width = 0.5, show.legend = F) + ggplot2::xlab("Outlet") +
-      ggplot2::ylab("Number of Characters")  + ggplot2::ggtitle("Mean Length of Article-Title") +
-      ggplot2::theme_bw() + ggplot2::scale_fill_manual(values = colors) + ggplot2::scale_color_manual(values = colors)
+      dplyr::summarize(titlelength = mean(nchar(title), na.rm = T)) |> ggplot(aes(x = outlet,
+                                                                                  y = titlelength,
+                                                                                  color = outlet,
+                                                                                  fill = outlet)) +
+      geom_col(width = 0.5, show.legend = F) + xlab("Outlet") +
+      ylab("Number of Characters")  + ggtitle("Mean Length of Article-Title") +
+      theme_bw() + scale_fill_manual(values = colors) + scale_color_manual(values = colors)
     print(lete)
 
     # Length of lead
     lele <- results_df |> dplyr::group_by(outlet) |>
-      dplyr::summarize(leadlength = mean(nchar(lead), na.rm = T)) |> ggplot2::ggplot(ggplot2::aes(x = outlet,
-                                                                         y = leadlength,
-                                                                         color = outlet,
-                                                                         fill = outlet)) +
-      ggplot2::geom_col(width = 0.5, show.legend = F) + ggplot2::xlab("Outlet") +
-      ggplot2::ylab("Number of Characters")  +
-      ggplot2::ggtitle("Mean Length of Article-Lead") + ggplot2::theme_bw() + ggplot2::scale_fill_manual(values = colors)  + ggplot2::scale_color_manual(values = colors)
+      dplyr::summarize(leadlength = mean(nchar(lead), na.rm = T)) |> ggplot(aes(x = outlet,
+                                                                                y = leadlength,
+                                                                                color = outlet,
+                                                                                fill = outlet)) +
+      geom_col(width = 0.5, show.legend = F) + xlab("Outlet") +
+      ylab("Number of Characters")  +
+      ggtitle("Mean Length of Article-Lead") + theme_bw() + scale_fill_manual(values = colors)  + scale_color_manual(values = colors)
     print(lele)
 
     # Length of body
     lebo <- results_df |> dplyr::group_by(outlet) |>
-      dplyr::summarize(bodylength = mean(nchar(body), na.rm = T)) |> ggplot2::ggplot(ggplot2::aes(x = outlet,
-                                                                         y = bodylength,
-                                                                         color = outlet,
-                                                                         fill = outlet)) +
-      ggplot2::geom_col(width = 0.5, show.legend = F) + ggplot2::xlab("Outlet") +
-      ylab("Number of Characters")  + ggplot2::ggtitle("Mean Length of Article-Body") +
-      theme_bw() + ggplot2::scale_fill_manual(values = colors)  + ggplot2::scale_color_manual(values = colors)
+      dplyr::summarize(bodylength = mean(nchar(body), na.rm = T)) |> ggplot(aes(x = outlet,
+                                                                                y = bodylength,
+                                                                                color = outlet,
+                                                                                fill = outlet)) +
+      geom_col(width = 0.5, show.legend = F) + xlab("Outlet") +
+      ylab("Number of Characters")  + ggtitle("Mean Length of Article-Body") +
+      theme_bw() + scale_fill_manual(values = colors)  + scale_color_manual(values = colors)
     print(lebo)
   }
 
@@ -263,17 +263,16 @@ mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALS
       dplyr::mutate(word_count = str_count(title, searchterm)) |> dplyr::group_by(outlet) |>
       dplyr::summarise(
         word_count = sum(word_count)
-      ) |> ggplot2::ggplot(ggplot2::aes(x = outlet, y = word_count, color = outlet, fill = outlet)) +
-      ggplot2::geom_col(width = 0.5, show.legend = F) + ggplot2::xlab("Outlet") +
-      ggplot2::ylab("Number of Appearances")  +
-      ggplot2::ggtitle("Number of Appearances of Word Specified") + theme_bw()
+      ) |> ggplot(aes(x = outlet, y = word_count, color = outlet, fill = outlet)) +
+      geom_col(width = 0.5, show.legend = F) + xlab("Outlet") +
+      ylab("Number of Appearances")  +
+      ggtitle("Number of Appearances of Word Specified") + theme_bw()
     print(wordo)}
 
 
 
   # Saving results into an sql-database or returning r-dataframe
   rs$close()
-  rs$server$stop()
   if (sqldb == TRUE){
     cat("Done. Saved results in sql-database 'scrapingresults'. Use object 'con' in environment to connect to database\n")
     assign("con", con, envir = .GlobalEnv)

@@ -2,3 +2,7 @@
 
 export(mediascraper)
 export(square_val)
+import(ggplot2)
+importFrom(dplyr,group_by)
+importFrom(dplyr,mutate)
+importFrom(dplyr,summarize)
