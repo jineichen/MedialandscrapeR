@@ -46,9 +46,9 @@ mediascraper(outlets = c("Watson", "20 Minuten"), browser = "firefox", port = 45
 ```
 
 You can add *sqldb = TRUE* if you rather want to store the results of
-the scraping-process in an sql database. It you decide to do so, you
-must can also specify a name for the database (the default is
-“scrapingresults”) by passing a name to the dbname-parameter.
+the scraping-process in an sql database. It you decide to do so, you can
+also specify a name for the database (the default is “scrapingresults”)
+by passing a name to the dbname-parameter.
 
 ``` r
 mediascraper(outlets = c("Watson", "20 Minuten"), browser = "firefox", port = 4501L, sqldb = TRUE,
@@ -57,11 +57,11 @@ mediascraper(outlets = c("Watson", "20 Minuten"), browser = "firefox", port = 45
 
 The function also has the ability to provide you with some summary-plots
 that give you more detail about the nature of the articles you just
-scraped. Setting *plots* to *TRUE* gives outputs the following graphs:
-\* Absolute number of articles per outlet \* Mean-length of
-article-titles per outlet \* Mean-length of article-leads per outlet \*
-Mean-length of article-bodies per outlet (only supported for Watson.ch
-and 20Minuten.ch)
+scraped. Setting *plots* to *TRUE* gives outputs the following graphs: -
+Absolute number of articles per outlet - Mean-length of article-titles
+per outlet - Mean-length of article-leads per outlet - Mean-length of
+article-bodies per outlet (only supported for Watson.ch and
+20Minuten.ch)
 
 If you want to count the appearances of a specific term in the titles of
 the articles you can pass a regex-pattern to the parameter *searchterm*.
