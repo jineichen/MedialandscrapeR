@@ -14,7 +14,7 @@
 #' @examples
 #' mediascraper(outlets = c("Watson", "20 Minuten"), plots = TRUE)
 mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALSE,
-                        dbname, plots = FALSE, searchterm = NULL){
+                        dbname = "scrapingresults", plots = FALSE, searchterm = NULL){
 
   suppressMessages(require(RSelenium))
   suppressMessages(require(stringr))
