@@ -57,11 +57,11 @@ mediascraper(outlets = c("Watson", "20 Minuten"), browser = "firefox", port = 45
 
 The function also has the ability to provide you with some summary-plots
 that give you more detail about the nature of the articles you just
-scraped. Setting *plots* to *TRUE* gives outputs the following graphs: -
-Absolute number of articles per outlet - Mean-length of article-titles
-per outlet - Mean-length of article-leads per outlet - Mean-length of
+scraped. Setting *plots* to *TRUE* gives outputs the following graphs:
+Absolute number of articles per outlet, Mean-length of article-titles
+per outlet, Mean-length of article-leads per outlet, Mean-length of
 article-bodies per outlet (only supported for Watson.ch and
-20Minuten.ch)
+20Minuten.ch).
 
 If you want to count the appearances of a specific term in the titles of
 the articles you can pass a regex-pattern to the parameter *searchterm*.

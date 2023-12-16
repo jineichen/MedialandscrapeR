@@ -23,7 +23,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
 
 
   # Checking function-inputs
-  if (any(outlets %in% c("Watson", "SRF", "20 Minuten") == FALSE)){
+  if (any(outlets %in% c("Watson", "SRF", "20 Minuten", "Tagesanzeiger") == FALSE)){
     stop("Error: One of the newsoutlets you specified is not (yet) supported")
   }
 
@@ -99,7 +99,13 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
         df_watson[i, "lead"] = lead
       }
 
-      body = NA
+      body_e = rs$findElements(using = 'css selector', 'p')
+      if (length(body_e) > 0) {
+        body_text = sapply(body_e, function(elem) elem$getElementText()[[1]])
+        body = paste(body_text, collapse = " ")
+        body = gsub("'", "", body)
+        df_watson[i, "body"] = body
+      }
 
       time = Sys.time()
       link = links[i]
@@ -190,6 +196,130 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
 
 
 
+  # SRF
+  if ("SRF" %in% outlets){
+    cat("Started scraping SRF\n")
+    rs$navigate("https://srf.ch")
+    Sys.sleep(2)
+
+    html = rs$getPageSource() # get source of the page
+    links = str_match_all(html, '<a class="teaser__main[^"]*" href=\"(.*?)\"')[[1]]
+    links = as.data.frame(links)[,2]
+
+    # Links have to be corrected because some of them do not begin with https://www.srf.ch
+    indices <- !grepl("^https://", links)
+    links[indices] <- paste0("https://www.srf.ch", links[indices])
+
+
+    df_srf = data.frame(title = rep(NA_character_, length(links)),
+                        lead = rep(NA_character_, length(links)),
+                        body = rep(NA_character_, length(links)),
+                        url = rep(NA_character_, length(links)),
+                        outlet = rep("SRF", length(links)),
+                        time = rep(Sys.time(), length(links)))
+
+    # Scrape articles
+    for(i in seq_along(links)){
+      rs$navigate(links[i])
+      title_e = rs$findElements(using = 'css selector', 'h1')
+      title = title_e[[1]]$getElementText()[[1]]
+      df_srf[i, "title"] = title
+
+      lead_e = rs$findElements(using = 'css selector', '.article-lead')
+      if(length(lead_e)>0){
+        lead = lead_e[[1]]$getElementText()[[1]]
+        df_srf[i, "lead"] = lead
+      }
+
+      body = NA
+
+      time = Sys.time()
+      link = links[i]
+      df_srf[i, "time"] = time
+      df_srf[i, "url"] = link
+
+
+      if (sqldb == TRUE){sql = paste0("INSERT INTO scrapingresults VALUES ('",title,"','",lead,"','",body,"','",link,"','SRF','",time,"')")
+      suppressMessages(dbSendStatement(con, sql))}
+
+
+    }
+
+    df_list[["SRF"]] <- df_srf
+
+  }
+
+
+
+  # Tagesanzeiger
+  if ("Tagesanzeiger" %in% outlets){
+    cat("Started scraping Tagesanzeiger\n")
+    rs$navigate("https://www.tagesanzeiger.ch/")
+    Sys.sleep(10)
+    # Scroll down the page bit by bit to load all the content.
+    for(i in 1:50){
+      rs$executeScript("window.scrollBy(0,500);")
+      Sys.sleep(0.5)
+    }
+    html = rs$getPageSource() # get source of the page
+    links = str_match_all(html, '<a class="Teaser_link__aPG04[^"]*" href=\"(.*?)\"')[[1]]
+    links = as.data.frame(links)[,2]
+
+    # Links have to be corrected because they do not begin with https://www.tagesanzeiger.ch/
+    indices <- !grepl("^https://", links)
+    links[indices] <- paste0("https://www.tagesanzeiger.ch", links[indices])
+
+
+    df_Tagesanzeiger = data.frame(title = rep(NA_character_, length(links)),
+                                  lead = rep(NA_character_, length(links)),
+                                  body = rep(NA_character_, length(links)),
+                                  url = rep(NA_character_, length(links)),
+                                  outlet = rep("Tagesanzeiger", length(links)),
+                                  time = rep(Sys.time(), length(links)))
+
+
+    for(i in seq_along(links)){
+      suppressMessages(rs$navigate(links[i]))
+      # css: id: #id, class: .class, tag: tag
+      title_e = rs$findElements(using = 'css selector', 'h2')
+      title = title_e[[1]]$getElementText()[[1]]
+      title = gsub("'", "", title) # escaping single quotations
+      df_Tagesanzeiger[i, "title"] = title
+
+      lead_e = rs$findElements(using = 'css selector', '.HtmlText_root__A1OSq')
+      if(length(lead_e)>0){
+        lead = lead_e[[1]]$getElementText()[[1]]
+        lead = gsub("'", "", lead)
+        df_Tagesanzeiger[i, "lead"] = lead
+      }
+
+      # Body is only scrapped incompletedly for paid articles
+      body_e = rs$findElements(using = 'css selector', 'p')
+      if (length(body_e) > 0) {
+        body_text = sapply(body_e, function(elem) elem$getElementText()[[1]])
+        body = paste(body_text, collapse = " ")
+        body = gsub("'", "", body)
+        df_Tagesanzeiger[i, "body"] = body
+      }
+
+      time = Sys.time()
+      link = links[i]
+      df_Tagesanzeiger[i, "time"] = time
+      df_Tagesanzeiger[i, "url"] = link
+
+
+
+      if (sqldb == TRUE){sql = paste0("INSERT INTO scrapingresults VALUES ('",title,"','",lead,"','",body,"','",link,"','Tagesanzeiger','",time,"')")
+      suppressMessages(dbSendStatement(con, sql))}
+
+
+    }
+    df_list[["Tagesanzeiger"]] <- df_Tagesanzeiger
+
+  }
+
+
+
 
   # Create results-dataframe
   results_df <- do.call(rbind, df_list)
@@ -204,7 +334,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
   if (plots == TRUE){
 
     # Setting colors for the different outlets
-    colors <- c("Watson" = "#F40F96", "20 Minuten" = "#0D2880", "SRF" = "#AF001D")
+    colors <- c("Watson" = "#F40F96", "20 Minuten" = "#0D2880", "SRF" = "#AF001D", "Tagesanzeiger" = "#000000")
 
     nrart <- results_df |> group_by(outlet) |>
       summarize(n = n()) |> ggplot(aes(x = outlet, y = n, color = outlet, fill =
@@ -240,13 +370,13 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
     # Length of body
     lebo <- results_df |> group_by(outlet) |>
       summarize(bodylength = mean(nchar(body), na.rm = T)) |>
-      filter(!outlet == "SRF") |> ggplot(aes(x = outlet,
-                                             y = bodylength,
-                                             color = outlet,
-                                             fill = outlet)) +
+      filter(!outlet == "SRF") |> filter(!outlet == "Tagesanzeiger") |> ggplot(aes(x = outlet,
+                                                                                   y = bodylength,
+                                                                                   color = outlet,
+                                                                                   fill = outlet)) +
       geom_col(width = 0.5, show.legend = F) + xlab("Outlet") +
       ylab("Number of Characters")  + ggtitle("Mean Length of Article-Body") +
-      theme_bw()+ scale_fill_manual(values = colors)  + scale_color_manual(values = colors)
+      theme_bw() + scale_fill_manual(values = colors)  + scale_color_manual(values = colors)
     print(lebo)
   }
 
@@ -260,16 +390,19 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
       ) |> ggplot(aes(x = outlet, y = word_count, color = outlet, fill = outlet)) +
       geom_col(width = 0.5, show.legend = F) + xlab("Outlet") +
       ylab("Number of Appearances")  +
-      ggtitle("Number of Appearances of Word Specified") + theme_bw()
+      ggtitle("Number of Appearances of Word Specified") + theme_bw() + scale_fill_manual(values = colors)  + scale_color_manual(values = colors)
     print(wordo)}
 
 
 
   # Saving results into an sql-database
-  rs$close()
+  rs$close() # Closing the client
+  rm(rs) # Removing the server-object to free up the port
+  gc
   if (sqldb == TRUE){
     cat("Done. Saved results in sql-database 'scrapingresults'. Use object 'con' in environment to connect to database\n")
     assign("con", con, envir = .GlobalEnv)
+    dbDisconnect(con)
 
   } else{
     cat("Done. Returned r-dataframe\n")
