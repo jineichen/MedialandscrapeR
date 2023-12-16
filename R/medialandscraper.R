@@ -13,7 +13,7 @@
 #'
 #' @examples
 #' mediascraper(outlets = c("Watson", "20 Minuten"), plots = TRUE)
-mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALSE,
+mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALSE,
                         dbname, plots = FALSE, searchterm = NULL){
 
   suppressMessages(require(RSelenium))
@@ -32,7 +32,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALS
 
   # Initiating sql-database (if requested by the user)
   if (sqldb == TRUE){require(DBI)
-    con = DBI::dbConnect(RSQLite::SQLite(), dbname)
+    con = dbConnect(RSQLite::SQLite(), dbname)
     dbSendQuery(con, "CREATE TABLE scrapingresults(
               title TEXT,
               lead TEXT,
@@ -41,7 +41,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALS
               outlet VARCHAR(32) NOT NULL,
               time DATETIME
             )")
-    DBI::dbListTables(con)
+    dbListTables(con)
   }
 
 
@@ -54,7 +54,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALS
 
   # Initiate scraper
   cat("Initiating Webscraper\n")
-  driver = suppressMessages(RSelenium::rsDriver(browser=browser, port = port, chromever = NULL))
+  driver = suppressMessages(rsDriver(browser=browser, port = port, chromever = NULL))
   rs = suppressMessages(driver$client)
 
 
@@ -70,7 +70,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALS
     Sys.sleep(10)
 
     html = rs$getPageSource() # get source of the page
-    links = stringr::str_match_all(html, '<a class="watson-teaser__link[^"]*" href=\"(.*?)\"')[[1]]
+    links = str_match_all(html, '<a class="watson-teaser__link[^"]*" href=\"(.*?)\"')[[1]]
     links = as.data.frame(links)[,2]
 
     # Delete links that do not begin with "https://www.watson.ch"
@@ -99,14 +99,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALS
         df_watson[i, "lead"] = lead
       }
 
-
-      body_e = rs$findElements(using = 'css selector', 'p')
-      if (length(body_e) > 0) {
-        body_text = sapply(body_e, function(elem) elem$getElementText()[[1]])
-        body = paste(body_text, collapse = " ")
-        body = gsub("'", "", body)
-        df_watson[i, "body"] = body
-      }
+      body = NA
 
       time = Sys.time()
       link = links[i]
@@ -116,7 +109,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALS
 
 
       if (sqldb == TRUE){sql = paste0("INSERT INTO scrapingresults VALUES ('",title,"','",lead,"','",body,"','",link,"','Watson','",time,"')")
-      suppressMessages(DBI::dbSendStatement(con, sql))}
+      suppressMessages(dbSendStatement(con, sql))}
 
 
     }
@@ -135,7 +128,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALS
     Sys.sleep(10)
 
     html = rs$getPageSource() # get source of the page
-    links = stringr::str_match_all(html, '<a class="sc-bb81291f-1[^"]*" href=\"(.*?)\"')[[1]]
+    links = str_match_all(html, '<a class="sc-bb81291f-1[^"]*" href=\"(.*?)\"')[[1]]
     links = as.data.frame(links)[,2]
 
 
@@ -185,7 +178,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALS
 
 
       if (sqldb == TRUE){sql = paste0("INSERT INTO scrapingresults VALUES ('",title,"','",lead,"','",body,"','",link,"','20 Minuten','",time,"')")
-      suppressMessages(DBI::dbSendStatement(con, sql))}
+      suppressMessages(dbSendStatement(con, sql))}
 
 
     }
@@ -213,9 +206,9 @@ mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALS
     # Setting colors for the different outlets
     colors <- c("Watson" = "#F40F96", "20 Minuten" = "#0D2880", "SRF" = "#AF001D")
 
-    nrart <- results_df |> dplyr::group_by(outlet) |>
-      dplyr::summarize(n = n()) |> ggplot(aes(x = outlet, y = n, color = outlet, fill =
-                                                outlet)) +
+    nrart <- results_df |> group_by(outlet) |>
+      summarize(n = n()) |> ggplot(aes(x = outlet, y = n, color = outlet, fill =
+                                         outlet)) +
       geom_col(width = 0.5, show.legend = F) +
       xlab("Outlet") + ylab("Number of Articles")  +
       ggtitle("Number of Scrapped Articles per Outlet") + theme_bw() +
@@ -223,36 +216,37 @@ mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALS
     print(nrart)
 
     # Length of title
-    lete <- results_df |> dplyr::group_by(outlet) |>
-      dplyr::summarize(titlelength = mean(nchar(title), na.rm = T)) |> ggplot(aes(x = outlet,
-                                                                                  y = titlelength,
-                                                                                  color = outlet,
-                                                                                  fill = outlet)) +
+    lete <- results_df |> group_by(outlet) |>
+      summarize(titlelength = mean(nchar(title), na.rm = T)) |> ggplot(aes(x = outlet,
+                                                                           y = titlelength,
+                                                                           color = outlet,
+                                                                           fill = outlet)) +
       geom_col(width = 0.5, show.legend = F) + xlab("Outlet") +
       ylab("Number of Characters")  + ggtitle("Mean Length of Article-Title") +
       theme_bw() + scale_fill_manual(values = colors) + scale_color_manual(values = colors)
     print(lete)
 
     # Length of lead
-    lele <- results_df |> dplyr::group_by(outlet) |>
-      dplyr::summarize(leadlength = mean(nchar(lead), na.rm = T)) |> ggplot(aes(x = outlet,
-                                                                                y = leadlength,
-                                                                                color = outlet,
-                                                                                fill = outlet)) +
+    lele <- results_df |> group_by(outlet) |>
+      summarize(leadlength = mean(nchar(lead), na.rm = T)) |> ggplot(aes(x = outlet,
+                                                                         y = leadlength,
+                                                                         color = outlet,
+                                                                         fill = outlet)) +
       geom_col(width = 0.5, show.legend = F) + xlab("Outlet") +
       ylab("Number of Characters")  +
       ggtitle("Mean Length of Article-Lead") + theme_bw() + scale_fill_manual(values = colors)  + scale_color_manual(values = colors)
     print(lele)
 
     # Length of body
-    lebo <- results_df |> dplyr::group_by(outlet) |>
-      dplyr::summarize(bodylength = mean(nchar(body), na.rm = T)) |> ggplot(aes(x = outlet,
-                                                                                y = bodylength,
-                                                                                color = outlet,
-                                                                                fill = outlet)) +
+    lebo <- results_df |> group_by(outlet) |>
+      summarize(bodylength = mean(nchar(body), na.rm = T)) |>
+      filter(!outlet == "SRF") |> ggplot(aes(x = outlet,
+                                             y = bodylength,
+                                             color = outlet,
+                                             fill = outlet)) +
       geom_col(width = 0.5, show.legend = F) + xlab("Outlet") +
       ylab("Number of Characters")  + ggtitle("Mean Length of Article-Body") +
-      theme_bw() + scale_fill_manual(values = colors)  + scale_color_manual(values = colors)
+      theme_bw()+ scale_fill_manual(values = colors)  + scale_color_manual(values = colors)
     print(lebo)
   }
 
@@ -260,8 +254,8 @@ mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALS
   # Search for appearances of a specific word in the title of the articles
   if (!is.null(searchterm)){
     wordo <- results_df  |>
-      dplyr::mutate(word_count = str_count(title, searchterm)) |> dplyr::group_by(outlet) |>
-      dplyr::summarise(
+      mutate(word_count = str_count(title, searchterm)) |> group_by(outlet) |>
+      summarise(
         word_count = sum(word_count)
       ) |> ggplot(aes(x = outlet, y = word_count, color = outlet, fill = outlet)) +
       geom_col(width = 0.5, show.legend = F) + xlab("Outlet") +
@@ -271,7 +265,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4491L, sqldb = FALS
 
 
 
-  # Saving results into an sql-database or returning r-dataframe
+  # Saving results into an sql-database
   rs$close()
   if (sqldb == TRUE){
     cat("Done. Saved results in sql-database 'scrapingresults'. Use object 'con' in environment to connect to database\n")
