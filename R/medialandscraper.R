@@ -1,10 +1,10 @@
 #' Title
 #'
-#' @param outlets Vector of media-outlets that should be scraped. Currently supported: Watson.ch, 20 Minuten.ch
+#' @param outlets Vector of media-outlets that should be scraped. Currently supported: Watson.ch, 20 Minuten.ch, SRF.ch, Tagesanzeiger.ch
 #' @param browser Browser that should be used for scraping. Default: Firefox
 #' @param port Port that should be used for scraping. Default: 4491L
 #' @param sqldb Whether scraping-results should to be stored in an sql-database or not. Default: FALSE
-#' @param dbname Name for the sql-database if sqldb = TRUE
+#' @param dbname Custom name for the sql-database. Default: "scrapingresults"
 #' @param plots Provides a summary of the scraped data in the form of basic plots if TRUE. Plots show: Number of articles per outlet scraped and mean-length of title/lead/body of the articles that where scraped. Default: FALSE
 #' @param searchterm Regular expression for which you want to search in the titles of the scraped articles. Result is a plot
 #'
@@ -23,6 +23,10 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
 
 
   # Checking function-inputs
+  if (outlets == "All"){
+    outlets = c("Watson", "SRF", "20 Minuten", "Tagesanzeiger")
+  }
+
   if (any(outlets %in% c("Watson", "SRF", "20 Minuten", "Tagesanzeiger") == FALSE)){
     stop("Error: One of the newsoutlets you specified is not (yet) supported")
   }
@@ -54,8 +58,8 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
 
   # Initiate scraper
   cat("Initiating Webscraper\n")
-  driver = suppressMessages(rsDriver(browser=browser, port = port, chromever = NULL))
-  rs = suppressMessages(driver$client)
+  driver = rsDriver(browser=browser, port = port, chromever = NULL, verbose = FALSE)
+  rs = driver$client
 
 
 
@@ -85,39 +89,43 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
                            time = rep(Sys.time(), length(links)))
 
 
-    for(i in seq_along(links)){
+    for (i in seq_along(links)) {
       suppressMessages(rs$navigate(links[i]))
-      # css: id: #id, class: .class, tag: tag
-      title_e = rs$findElements(using = 'css selector', 'h2')
-      title = title_e[[1]]$getElementText()[[1]]
-      title = gsub("'", "", title) # escaping single quotations
-      df_watson[i, "title"] = title
-      lead_e = rs$findElements(using = 'css selector', '.watson-snippet__lead')
-      if(length(lead_e)>0){
-        lead = lead_e[[1]]$getElementText()[[1]]
-        lead = gsub("'", "", lead)
-        df_watson[i, "lead"] = lead
-      }
 
+      # Title
+      title_e = rs$findElements(using = 'css selector', 'h2')
+      title = if (length(title_e) > 0) {
+        gsub("'", "", title_e[[1]]$getElementText()[[1]])
+      } else {NA} # NA's have to be set explicitely, otherwise the function won't work properly when saving as sql-db
+      df_watson[i, "title"] = title
+
+      # Lead
+      lead_e = rs$findElements(using = 'css selector', '.watson-snippet__lead')
+      lead = if (length(lead_e) > 0) {
+        gsub("'", "", lead_e[[1]]$getElementText()[[1]])
+      } else {NA}
+      df_watson[i, "lead"] = lead
+
+      # Body
       body_e = rs$findElements(using = 'css selector', 'p')
-      if (length(body_e) > 0) {
+      body = if (length(body_e) > 0) {
         body_text = sapply(body_e, function(elem) elem$getElementText()[[1]])
         body = paste(body_text, collapse = " ")
         body = gsub("'", "", body)
-        df_watson[i, "body"] = body
-      }
+      } else {NA}
+      df_watson[i, "body"] = body
 
+      # Other info
       time = Sys.time()
       link = links[i]
       df_watson[i, "time"] = time
       df_watson[i, "url"] = link
+      outlet = "Watson"
 
-
-
-      if (sqldb == TRUE){sql = paste0("INSERT INTO scrapingresults VALUES ('",title,"','",lead,"','",body,"','",link,"','Watson','",time,"')")
-      suppressMessages(dbSendStatement(con, sql))}
-
-
+      if (sqldb == TRUE) {
+        sql = paste0("INSERT INTO scrapingresults VALUES ('", title, "','", lead, "','", body, "','", link, "','", outlet, "','", time, "')")
+        suppressWarnings(suppressMessages(dbSendStatement(con, sql)))
+      }
     }
 
     df_list[["Watson"]] <- df_watson
@@ -133,10 +141,44 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
     rs$navigate("https://20min.ch/")
     Sys.sleep(10)
 
-    html = rs$getPageSource() # get source of the page
+
+
+    # Click on data-protection pop-up to enable full loading of the page
+    suppressMessages(tryCatch({
+      popup = rs$findElement(using = 'css selector', '#onetrust-accept-btn-handler')
+      popup$clickElement()
+    },
+    error = function(errormessage){
+      print(errormessage)
+    }))
+
+    # Scrolling to the bottom of the page to load all content
+    webElem <- rs$findElement("css", "body")
+    webElem$sendKeysToElement(list(key = "end"))
+    Sys.sleep(10)
+    rs$executeScript("window.scrollBy(0,-3000)")
+    webElem <- rs$findElement("css", "body")
+    webElem$sendKeysToElement(list(key = "end"))
+    Sys.sleep(10)
+    rs$executeScript("window.scrollBy(0,-3000)")
+    webElem <- rs$findElement("css", "body")
+    webElem$sendKeysToElement(list(key = "end"))
+    Sys.sleep(10)
+    rs$executeScript("window.scrollBy(0,-3000)")
+    webElem <- rs$findElement("css", "body")
+    webElem$sendKeysToElement(list(key = "end"))
+    Sys.sleep(10)
+    rs$executeScript("window.scrollBy(0,-3000)")
+    Sys.sleep(10)
+    for(i in 1:30){
+      rs$executeScript("window.scrollBy(0,1000);")
+      Sys.sleep(1)
+    }
+
+    # get source of the page
+    html = rs$getPageSource()
     links = str_match_all(html, '<a class="sc-bb81291f-1[^"]*" href=\"(.*?)\"')[[1]]
     links = as.data.frame(links)[,2]
-
 
     # Links have to be corrected because some of them do not begin with https://www.20min.ch
     indices <- !grepl("^https://", links)
@@ -153,38 +195,43 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
 
     for(i in seq_along(links)){
       suppressMessages(rs$navigate(links[i]))
-      # css: id: #id, class: .class, tag: tag
+
+      # Title
       title_e = rs$findElements(using = 'css selector', 'h2')
-      title = title_e[[1]]$getElementText()[[1]]
-      title = gsub("'", "", title) # escaping single quotations
+      title = if (length(title_e) > 0) {
+        gsub("'", "", title_e[[1]]$getElementText()[[1]])
+      } else {NA}
       df_20minuten[i, "title"] = title
 
+      # Lead
       lead_e = rs$findElements(using = 'css selector', '.Article_elementLead__a52sm')
-      if(length(lead_e)>0){
-        lead = lead_e[[1]]$getElementText()[[1]]
-        lead = gsub("'", "", lead)
-        df_20minuten[i, "lead"] = lead
-      }
+      lead = if (length(lead_e) > 0) {
+        gsub("'", "", lead_e[[1]]$getElementText()[[1]])
+      } else {NA}
+      df_20minuten[i, "lead"] = lead
 
 
+      # Body
       body_e = rs$findElements(using = 'css selector', 'p')
-      if (length(body_e) > 0) {
+      body = if (length(body_e) > 0) {
         body_text = sapply(body_e, function(elem) elem$getElementText()[[1]])
         body = paste(body_text, collapse = " ")
         body = gsub("'", "", body)
-        df_20minuten[i, "body"] = body
-      }
+      } else {NA}
+      df_20minuten[i, "body"] = body
 
+
+      # Additional info
       time = Sys.time()
       link = links[i]
       df_20minuten[i, "time"] = time
       df_20minuten[i, "url"] = link
+      outlet = "20 Minuten"
 
-
-
-
-      if (sqldb == TRUE){sql = paste0("INSERT INTO scrapingresults VALUES ('",title,"','",lead,"','",body,"','",link,"','20 Minuten','",time,"')")
-      suppressMessages(dbSendStatement(con, sql))}
+      if (sqldb == TRUE) {
+        sql = paste0("INSERT INTO scrapingresults VALUES ('", title, "','", lead, "','", body, "','", link, "','", outlet, "','", time, "')")
+        suppressWarnings(suppressMessages(dbSendStatement(con, sql)))
+      }
 
 
     }
@@ -221,26 +268,38 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
     # Scrape articles
     for(i in seq_along(links)){
       rs$navigate(links[i])
+
+      # Title
       title_e = rs$findElements(using = 'css selector', 'h1')
-      title = title_e[[1]]$getElementText()[[1]]
+      title = if (length(title_e) > 0) {
+        gsub("'", "", title_e[[1]]$getElementText()[[1]])
+      } else {NA}
       df_srf[i, "title"] = title
 
+      # Lead
       lead_e = rs$findElements(using = 'css selector', '.article-lead')
-      if(length(lead_e)>0){
-        lead = lead_e[[1]]$getElementText()[[1]]
-        df_srf[i, "lead"] = lead
-      }
+      lead = if (length(lead_e) > 0) {
+        gsub("'", "", lead_e[[1]]$getElementText()[[1]])
+      } else {NA}
+      df_srf[i, "lead"] = lead
 
-      body = NA
 
+      # Body
+      body = NA # Not supported as of now
+
+      # Additional info
       time = Sys.time()
       link = links[i]
       df_srf[i, "time"] = time
       df_srf[i, "url"] = link
 
 
-      if (sqldb == TRUE){sql = paste0("INSERT INTO scrapingresults VALUES ('",title,"','",lead,"','",body,"','",link,"','SRF','",time,"')")
-      suppressMessages(dbSendStatement(con, sql))}
+      outlet = "SRF"
+
+      if (sqldb == TRUE) {
+        sql = paste0("INSERT INTO scrapingresults VALUES ('", title, "','", lead, "','", body, "','", link, "','", outlet, "','", time, "')")
+        suppressWarnings(suppressMessages(dbSendStatement(con, sql)))
+      }
 
 
     }
@@ -280,37 +339,44 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
 
     for(i in seq_along(links)){
       suppressMessages(rs$navigate(links[i]))
-      # css: id: #id, class: .class, tag: tag
+
+      # Title
       title_e = rs$findElements(using = 'css selector', 'h2')
-      title = title_e[[1]]$getElementText()[[1]]
-      title = gsub("'", "", title) # escaping single quotations
+      title = if (length(title_e) > 0) {
+        gsub("'", "", title_e[[1]]$getElementText()[[1]])
+      } else {NA}
       df_Tagesanzeiger[i, "title"] = title
 
+      # Lead
       lead_e = rs$findElements(using = 'css selector', '.HtmlText_root__A1OSq')
-      if(length(lead_e)>0){
-        lead = lead_e[[1]]$getElementText()[[1]]
-        lead = gsub("'", "", lead)
-        df_Tagesanzeiger[i, "lead"] = lead
-      }
+      lead = if (length(lead_e) > 0) {
+        gsub("'", "", lead_e[[1]]$getElementText()[[1]])
+      } else {NA}
+      df_Tagesanzeiger[i, "lead"] = lead
 
       # Body is only scrapped incompletedly for paid articles
       body_e = rs$findElements(using = 'css selector', 'p')
-      if (length(body_e) > 0) {
+      body = if (length(body_e) > 0) {
         body_text = sapply(body_e, function(elem) elem$getElementText()[[1]])
         body = paste(body_text, collapse = " ")
         body = gsub("'", "", body)
-        df_Tagesanzeiger[i, "body"] = body
-      }
+      } else {NA}
+      df_Tagesanzeiger[i, "body"] = body
 
+
+      # Additional info
       time = Sys.time()
       link = links[i]
       df_Tagesanzeiger[i, "time"] = time
       df_Tagesanzeiger[i, "url"] = link
 
 
+      outlet = "Tagesanzeiger"
 
-      if (sqldb == TRUE){sql = paste0("INSERT INTO scrapingresults VALUES ('",title,"','",lead,"','",body,"','",link,"','Tagesanzeiger','",time,"')")
-      suppressMessages(dbSendStatement(con, sql))}
+      if (sqldb == TRUE) {
+        sql = paste0("INSERT INTO scrapingresults VALUES ('", title, "','", lead, "','", body, "','", link, "','", outlet, "','", time, "')")
+        suppressWarnings(suppressMessages(dbSendStatement(con, sql)))
+      }
 
 
     }
@@ -329,7 +395,7 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
 
 
 
-  # Writing code to create analysis plots:
+  # Code to create analysis plots:
   # Number of articles
   if (plots == TRUE){
 
@@ -398,11 +464,11 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
   # Saving results into an sql-database
   rs$close() # Closing the client
   rm(rs) # Removing the server-object to free up the port
+  system("taskkill /im java.exe /f", intern=TRUE, ignore.stdout=FALSE) # "Killing" remaining java-process to free up the port used by Rselenium
   gc
   if (sqldb == TRUE){
     cat("Done. Saved results in sql-database 'scrapingresults'. Use object 'con' in environment to connect to database\n")
     assign("con", con, envir = .GlobalEnv)
-    dbDisconnect(con)
 
   } else{
     cat("Done. Returned r-dataframe\n")
