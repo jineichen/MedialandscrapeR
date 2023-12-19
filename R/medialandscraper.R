@@ -6,7 +6,6 @@
 #' @param sqldb Whether scraping-results should to be stored in an sql-database or not. Default: FALSE
 #' @param dbname Custom name for the sql-database. Default: "scrapingresults"
 #' @param plots Provides a summary of the scraped data in the form of basic plots if TRUE. Plots show: Number of articles per outlet scraped and mean-length of title/lead/body of the articles that where scraped. Default: FALSE
-#' @param searchterm Regular expression for which you want to search in the titles of the scraped articles. Result is a plot
 #'
 #' @return R-dataframe or sql-database
 #' @export
@@ -14,7 +13,7 @@
 #' @examples
 #' mediascraper(outlets = c("Watson", "20 Minuten"), plots = TRUE)
 mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALSE,
-                        dbname = "scrapingresults", plots = FALSE, searchterm = NULL){
+                        dbname = "scrapingresults", plots = FALSE){
 
   suppressMessages(require(RSelenium))
   suppressMessages(require(stringr))
@@ -30,8 +29,6 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
   if (any(outlets %in% c("Watson", "SRF", "20 Minuten", "Tagesanzeiger") == FALSE)){
     stop("Error: One of the newsoutlets you specified is not (yet) supported")
   }
-
-
 
 
   # Initiating sql-database (if requested by the user)
@@ -446,18 +443,6 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
     print(lebo)
   }
 
-
-  # Search for appearances of a specific word in the title of the articles
-  if (!is.null(searchterm)){
-    wordo <- results_df  |>
-      mutate(word_count = str_count(title, searchterm)) |> group_by(outlet) |>
-      summarise(
-        word_count = sum(word_count)
-      ) |> ggplot(aes(x = outlet, y = word_count, color = outlet, fill = outlet)) +
-      geom_col(width = 0.5, show.legend = F) + xlab("Outlet") +
-      ylab("Number of Appearances")  +
-      ggtitle("Number of Appearances of Word Specified") + theme_bw() + scale_fill_manual(values = colors)  + scale_color_manual(values = colors)
-    print(wordo)}
 
 
 
