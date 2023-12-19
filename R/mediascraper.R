@@ -457,7 +457,6 @@ mediascraper = function(outlets, browser = "firefox", port = 4490L, sqldb = FALS
 
   } else{
     cat("Done. Returned r-dataframe\n")
-    assign("scrapingresults", results_df, envir = .GlobalEnv)
-    return(results_df)}
+    assign("scrapingresults", results_df, envir = .GlobalEnv)}
 
 }
