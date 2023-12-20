@@ -4,7 +4,7 @@ Title: A simple webscraper to scrape starting pages of swiss media outlets
 Version: 0.1.1
 Author: Jonas Ineichen
 Maintainer: The package maintainer <jonasdavid.ineichen@uzh.ch>
-Description: A simple webscraper to scrape starting pages of swiss media outlets
+Description: A simple webscraper to scrape starting pages of swiss media outlets. The package also includes a function to do cursory analysis of newspaper-articles.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true

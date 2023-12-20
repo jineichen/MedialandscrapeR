@@ -4,8 +4,8 @@
 \name{MedialandscrapeR-package}
 \alias{MedialandscrapeR}
 \alias{MedialandscrapeR-package}
-\title{MedialandscrapeR: What the Package Does (Title Case)}
+\title{MedialandscrapeR: A simple webscraper to scrape starting pages of swiss media outlets}
 \description{
-More about what it does (maybe more than one line) Use four spaces when indenting paragraphs within the Description.
+A simple webscraper to scrape starting pages of swiss media outlets. The package also includes a function to do cursory analysis of newspaper-articles.
 }
 \keyword{internal}

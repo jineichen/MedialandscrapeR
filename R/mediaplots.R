@@ -10,7 +10,8 @@
 #' @export
 #'
 #' @examples
-#' scrapingresults = data.frame(title = rep("Test", 3), lead = rep("Test", 3), body = rep("Test", 3), outlet = c("Watson", "20 Minuten", "SRF"))
+#' scrapingresults = data.frame(title = rep("Test", 3), lead = rep("Test", 3),
+#' body = rep("Test", 3), outlet = c("Watson", "20 Minuten", "SRF"))
 #' mediaplots(scrapingresults, plots = TRUE)
 #' mediaplots(scrapingresults, plots = TRUE, searchterm = "Test")
 mediaplots = function(datacon, dbname = NULL, plots = TRUE, searchterm = NULL, searchtarget = "title"){
